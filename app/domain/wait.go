@@ -24,8 +24,8 @@ func (h *WaitHandler) Handle(req WaitCommandReq, ctx context.Context) (res WaitC
 			println("Context cancelled, stopping wait")
 			return WaitCommandRes{}, ctx.Err()
 		default:
-			time.Sleep(1 * time.Second)
 			println("Waiting for", duration, "seconds")
+			time.Sleep(1 * time.Second)
 		}
 	}
 	return WaitCommandRes{}, nil

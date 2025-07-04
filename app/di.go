@@ -43,57 +43,75 @@ func BuildContainer() (err error, container di.Container) {
 		Scope: di.App,
 		Build: func(ctn di.Container) (any, error) {
 			return domain.NewNestedHandler(
-				ctn.Get(util.TypeNameFor[commands.HandlerRegistry]()).(*commands.HandlerRegistry),
+				ctn.Get(util.TypeNameFor[commands.HandlerCatalog]()).(*commands.HandlerCatalog),
 			), nil
 		},
 	})
 
 	_ = builder.Add(di.Def{
-		Name:  util.TypeNameFor[commands.MappingRegistry](),
+		Name:  util.TypeNameFor[commands.MappingCatalog](),
 		Scope: di.App,
 		Build: func(ctn di.Container) (any, error) {
-			registry := commands.NewMappingRegistry()
-			commands.RegisterMapping[domain.AddCommandReq](registry, "add")
-			commands.RegisterMapping[domain.SubCommandReq](registry, "sub")
-			commands.RegisterMapping[domain.WaitCommandReq](registry, "wait")
-			commands.RegisterMapping[domain.NestedCommandReq](registry, "nested")
-			return registry, nil
+			return commands.NewMappingCatalog(), nil
 		},
 	})
 
 	_ = builder.Add(di.Def{
-		Name:  util.TypeNameFor[commands.DecoderRegistry](),
+		Name:  util.TypeNameFor[commands.DecoderCatalog](),
 		Scope: di.App,
 		Build: func(ctn di.Container) (any, error) {
-			registry := commands.NewDecoderRegistry()
-			commands.RegisterDecoder[domain.AddCommandReq](registry, commands.DefaultCommandReqDecoder[domain.AddCommandReq]())
-			commands.RegisterDecoder[domain.SubCommandReq](registry, commands.DefaultCommandReqDecoder[domain.SubCommandReq]())
-			commands.RegisterDecoder[domain.WaitCommandReq](registry, commands.DefaultCommandReqDecoder[domain.WaitCommandReq]())
-			commands.RegisterDecoder[domain.NestedCommandReq](registry, commands.DefaultCommandReqDecoder[domain.NestedCommandReq]())
-			return registry, nil
+			return commands.NewDecoderCatalog(), nil
 		},
 	})
 
 	_ = builder.Add(di.Def{
-		Name:  util.TypeNameFor[commands.HandlerRegistry](),
+		Name:  util.TypeNameFor[commands.HandlerCatalog](),
 		Scope: di.App,
 		Build: func(ctn di.Container) (any, error) {
-			registry := commands.NewHandlerRegistry()
-			commands.RegisterHandler[domain.AddCommandReq, domain.AddCommandRes](registry, func() commands.Handler[domain.AddCommandReq, domain.AddCommandRes] {
-				return util.GetFromContainer[*domain.AddHandler](ctn)
-			})
-			commands.RegisterHandler[domain.SubCommandReq, domain.SubCommandRes](registry, func() commands.Handler[domain.SubCommandReq, domain.SubCommandRes] {
-				return util.GetFromContainer[*domain.SubHandler](ctn)
-			})
-			commands.RegisterHandler[domain.WaitCommandReq, domain.WaitCommandRes](registry, func() commands.Handler[domain.WaitCommandReq, domain.WaitCommandRes] {
-				return util.GetFromContainer[*domain.WaitHandler](ctn)
-			})
-			commands.RegisterHandler[domain.NestedCommandReq, domain.NestedCommandRes](registry, func() commands.Handler[domain.NestedCommandReq, domain.NestedCommandRes] {
-				return util.GetFromContainer[*domain.NestedHandler](ctn)
-			})
-			return registry, nil
+			return commands.NewHandlerCatalog(), nil
 		},
 	})
 
+	_ = builder.Add(di.Def{
+		Name:  util.TypeNameFor[commands.Manager](),
+		Scope: di.App,
+		Build: func(ctn di.Container) (any, error) {
+			manager := commands.NewManager(
+				ctn.Get(util.TypeNameFor[commands.MappingCatalog]()).(*commands.MappingCatalog),
+				ctn.Get(util.TypeNameFor[commands.DecoderCatalog]()).(*commands.DecoderCatalog),
+				ctn.Get(util.TypeNameFor[commands.HandlerCatalog]()).(*commands.HandlerCatalog),
+			)
+			commands.Insert[domain.AddCommandReq, domain.AddCommandRes](
+				manager,
+				"add",
+				commands.DefaultDecoder[domain.AddCommandReq](),
+				func() commands.Handler[domain.AddCommandReq, domain.AddCommandRes] {
+					return util.GetFromContainer[*domain.AddHandler](ctn)
+				})
+			commands.Insert[domain.SubCommandReq, domain.SubCommandRes](
+				manager,
+				"sub",
+				commands.DefaultDecoder[domain.SubCommandReq](),
+				func() commands.Handler[domain.SubCommandReq, domain.SubCommandRes] {
+					return util.GetFromContainer[*domain.SubHandler](ctn)
+				})
+			commands.Insert[domain.WaitCommandReq, domain.WaitCommandRes](
+				manager,
+				"wait",
+				commands.DefaultDecoder[domain.WaitCommandReq](),
+				func() commands.Handler[domain.WaitCommandReq, domain.WaitCommandRes] {
+					return util.GetFromContainer[*domain.WaitHandler](ctn)
+				})
+			commands.Insert[domain.NestedCommandReq, domain.NestedCommandRes](
+				manager,
+				"nested",
+				commands.DefaultDecoder[domain.NestedCommandReq](),
+				func() commands.Handler[domain.NestedCommandReq, domain.NestedCommandRes] {
+					return util.GetFromContainer[*domain.NestedHandler](ctn)
+				})
+			return manager, nil
+		},
+	})
+	
 	return nil, builder.Build()
 }

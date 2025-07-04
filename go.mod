@@ -5,7 +5,7 @@ go 1.23.0
 toolchain go1.23.2
 
 require (
-	github.com/dan-lugg/go-commands v0.0.0-20250703224329-ea6da7769fd4
+	github.com/dan-lugg/go-commands v0.0.0-20250704045436-4e7e0a058b8a
 	github.com/getkin/kin-openapi v0.132.0
 	github.com/gin-gonic/gin v1.10.1
 	github.com/sarulabs/di/v2 v2.5.2

@@ -21,12 +21,12 @@ func main() {
 
 	router := gin.Default()
 	router.GET("/docs", func(c *gin.Context) {
-		mappingRegistry := container.Get(util.TypeNameFor[commands.MappingRegistry]()).(*commands.MappingRegistry)
-		handlerRegistry := container.Get(util.TypeNameFor[commands.HandlerRegistry]()).(*commands.HandlerRegistry)
+		mappingCatalog := container.Get(util.TypeNameFor[commands.MappingCatalog]()).(*commands.MappingCatalog)
+		handlerCatalog := container.Get(util.TypeNameFor[commands.HandlerCatalog]()).(*commands.HandlerCatalog)
 
-		specWriter := openapi.NewSpecWriter(mappingRegistry, handlerRegistry)
+		specWriter := openapi.NewSpecWriter(mappingCatalog, handlerCatalog)
 		c.Header("Content-Type", "application/json")
-		err = specWriter.WriteSpec(c.Writer)
+		err := specWriter.WriteSpec(c.Writer)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("error writing OpenAPI spec: %v", err)})
 			return
@@ -35,10 +35,7 @@ func main() {
 		c.Status(http.StatusOK)
 	})
 	router.POST("/commands/:name", func(c *gin.Context) {
-		mappingRegistry := container.Get(util.TypeNameFor[commands.MappingRegistry]()).(*commands.MappingRegistry)
-		decoderRegistry := container.Get(util.TypeNameFor[commands.DecoderRegistry]()).(*commands.DecoderRegistry)
-		handlerRegistry := container.Get(util.TypeNameFor[commands.HandlerRegistry]()).(*commands.HandlerRegistry)
-
+		manager := container.Get(util.TypeNameFor[commands.Manager]()).(*commands.Manager)
 		reqName := c.Param("name")
 		reqData, err := io.ReadAll(c.Request.Body)
 		if err != nil {
@@ -46,21 +43,9 @@ func main() {
 			return
 		}
 
-		reqType, err := mappingRegistry.ByName(reqName)
+		res, err := manager.Handle(reqName, reqData, c.Request.Context())
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("error finding mapped type for request: %v", err)})
-			return
-		}
-
-		req, err := decoderRegistry.Decode(reqType, reqData)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("error decoding request: %v", err)})
-			return
-		}
-
-		res, err := handlerRegistry.Handle(req, c.Request.Context())
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("error handling request: %v", err)})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("error handling command: %v", err)})
 			return
 		}
 

@@ -17,10 +17,10 @@ type NestedCommandReq struct {
 
 type NestedHandler struct {
 	commands.Handler[NestedCommandReq, NestedCommandRes]
-	handlerRegistry *commands.HandlerRegistry
+	handlerRegistry *commands.HandlerCatalog
 }
 
-func NewNestedHandler(registry *commands.HandlerRegistry) *NestedHandler {
+func NewNestedHandler(registry *commands.HandlerCatalog) *NestedHandler {
 	return &NestedHandler{
 		handlerRegistry: registry,
 	}
@@ -34,7 +34,7 @@ func (h *NestedHandler) Handle(req NestedCommandReq, ctx context.Context) (res N
 	if err != nil {
 		return NestedCommandRes{}, err
 	}
-	
+
 	subRes, err := h.handlerRegistry.Handle(SubCommandReq{
 		ArgX: req.ArgX,
 		ArgY: req.ArgY,
